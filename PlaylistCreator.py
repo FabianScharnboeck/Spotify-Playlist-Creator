@@ -2,7 +2,7 @@
 import spotipy
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-from spotipy.oauth2 import SpotifyClientCredentials
+from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOAuth
 import spotifycredentials
 import youtube_dl
 
@@ -13,11 +13,16 @@ class PlaylistCreator:
         self.SPOTIFY_CLIENT_ID = spotifycredentials.client_id_spotify
         self.SPOTIFY_CLIENT_SECRET = spotifycredentials.client_secret_spotify
         self.SPOTIFY_USER_ID = spotifycredentials.user_id
+        self.REDIRECT_URI = spotifycredentials.redirect_uri
         self.OAUTH_KEY_FILE = "client_secret_306315169899-d9fj3lvr1jnddrpbtel2nag14u2fa37n.apps.googleusercontent.com" \
                               ".json "
+        scope = 'playlist-modify-private'
 
-        self.spotify = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=self.SPOTIFY_CLIENT_ID,
-                                                                             client_secret=self.SPOTIFY_CLIENT_SECRET))
+        self.spotify = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=self.SPOTIFY_CLIENT_ID,
+                                                                 client_secret=self.SPOTIFY_CLIENT_SECRET,
+                                                                 scope=scope,
+                                                                 redirect_uri=self.REDIRECT_URI,
+                                                                 username="1168818363"))
 
         #self.liked_videos = self.get_song_infos()
 
@@ -59,4 +64,4 @@ class PlaylistCreator:
     def create_playlist(self):
         description = "This is a playlist with all my liked songs on Youtube."
         self.spotify.user_playlist_create(user=self.SPOTIFY_USER_ID, public=False, name="Youtube liked Songs",
-                                          description=description )
+                                          description=description,  )
