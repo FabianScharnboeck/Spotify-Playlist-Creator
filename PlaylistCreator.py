@@ -1,10 +1,10 @@
-
 import spotipy
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOAuth
+from spotipy.oauth2 import SpotifyOAuth
 import spotifycredentials
 import youtube_dl
+import os
 
 
 class PlaylistCreator:
@@ -24,7 +24,7 @@ class PlaylistCreator:
                                                                  redirect_uri=self.REDIRECT_URI,
                                                                  username="1168818363"))
 
-        #self.liked_videos = self.get_song_infos()
+        # self.liked_videos = self.get_song_infos()
 
     # Returns general song infos about all liked Youtube Videos
     def get_song_infos(self):
@@ -61,7 +61,26 @@ class PlaylistCreator:
         songs = result['tracks']['items']
         return songs[0]['uri']
 
+    # Creates a private playlist 'Youtube liked songs' and returns the id
     def create_playlist(self):
         description = "This is a playlist with all my liked songs on Youtube."
-        self.spotify.user_playlist_create(user=self.SPOTIFY_USER_ID, public=False, name="Youtube liked Songs",
-                                          description=description,  )
+        response = self.spotify.user_playlist_create(user=self.SPOTIFY_USER_ID, public=False,
+                                                     name="Youtube liked Songs",
+                                                     description=description)
+
+        # Write a File with the Playlist id
+        file = open("PlaylistID.txt", "w")
+        file.write(response['id'])
+        return response['id']
+
+    # Adds the liked songs to the playlist.
+    def add_songs_to_playlist(self):
+        file = open("PlaylistID.txt", "r")
+
+        # Check if empty
+        if os.path.getsize(file) == 0:
+            self.create_playlist()
+        playlist = file.read()
+
+        # Add the songs to the playlist
+        pass
