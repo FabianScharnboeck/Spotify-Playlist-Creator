@@ -4,7 +4,15 @@ from googleapiclient.discovery import build
 from spotipy.oauth2 import SpotifyOAuth
 import spotifycredentials
 import youtube_dl
-import os
+
+
+# Cuts a string from the start of a '(' symbol
+def preprocess_song_name(song_name: str):
+    song_name.lower()
+    if song_name.__contains__("("):
+        begin = song_name.index("(")
+        song_name = song_name[0:begin]
+    return song_name
 
 
 class PlaylistCreator:
@@ -14,6 +22,7 @@ class PlaylistCreator:
         self.SPOTIFY_CLIENT_SECRET = spotifycredentials.client_secret_spotify
         self.SPOTIFY_USER_ID = spotifycredentials.user_id
         self.REDIRECT_URI = spotifycredentials.redirect_uri
+        self.SPOTIFY_USERNAME = spotifycredentials.username
         self.OAUTH_KEY_FILE = "client_secret_306315169899-d9fj3lvr1jnddrpbtel2nag14u2fa37n.apps.googleusercontent.com" \
                               ".json "
         scope = 'playlist-modify-private'
@@ -22,12 +31,13 @@ class PlaylistCreator:
                                                                  client_secret=self.SPOTIFY_CLIENT_SECRET,
                                                                  scope=scope,
                                                                  redirect_uri=self.REDIRECT_URI,
-                                                                 username="1168818363"))
-
-        # self.liked_videos = self.get_song_infos()
+                                                                 username=self.SPOTIFY_USERNAME))
+        self.song_info = {}
+        self.assign_song_infos()
+        print(self.song_info)
 
     # Returns general song infos about all liked Youtube Videos
-    def get_song_infos(self):
+    def assign_song_infos(self):
         api_name = "youtube"
         api_version = "v3"
         oauth_key_file = self.OAUTH_KEY_FILE
@@ -38,28 +48,48 @@ class PlaylistCreator:
 
         request = service.videos().list(
             part="snippet,contentDetails,statistics",
-            myRating="like"
+            myRating="like",
+            maxResults=100
         )
         response = request.execute()
+
+        youtube_dl.utils.std_headers['User-Agent'] = "facebookexternalhit/1.1 (" \
+                                                     "+http://www.facebook.com/externalhit_uatext.php) "
         for video in response["items"]:
-            url = "https://www.youtube.com/watch?v={}".format(video["id"])
-            video = youtube_dl.YoutubeDL({}).extract_info(url, download=False)
-            song_name = video["track"]
-            artist = video["artist"]
-            song_info = {
-                "url": url,
-                "song_name": song_name,
-                "artist": artist,
-                "spotify_uri": self.get_spotify_uri(song_name, artist)
-            }
-        return song_info
+            url = video["id"]
+            info = youtube_dl.YoutubeDL({}).extract_info(url, download=False)
+            song_name = info["track"]
+            artist = info["artist"]
+            if not song_name:
+                song_name = preprocess_song_name(info["title"])
+                self.song_info[song_name] = {
+                    "url": url,
+                    "song_name": song_name,
+                    "artist": artist,
+                    "spotify_uri": self.get_spotify_uri(song_name)
+                }
+            else:
+                self.song_info[song_name] = {
+                    "url": url,
+                    "song_name": song_name,
+                    "artist": artist,
+                    "spotify_uri": self.get_spotify_uri(song_name, artist)
+                }
 
     # Returns the spotify URI of the searched song.
-    def get_spotify_uri(self, song_name, artist):
-        q = "track:{} artist:{}".format(song_name, artist)
-        result = self.spotify.search(q=q, type="track", offset=0, limit=20)
-        songs = result['tracks']['items']
-        return songs[0]['uri']
+    def get_spotify_uri(self, song_name, artist=None):
+        if artist:
+            q = "track:{} artist:{}".format(song_name, artist)
+            result = self.spotify.search(q=q, type="track", offset=0, limit=20)
+            songs = result['tracks']['items']
+        else:
+            q = song_name
+            result = self.spotify.search(q=q, type="track", offset=0, limit=20)
+            songs = result['tracks']['items']
+        if not songs:
+            return []
+        else:
+            return songs[0]['uri']
 
     # Creates a private playlist 'Youtube liked songs' and returns the id
     def create_playlist(self):
@@ -68,19 +98,21 @@ class PlaylistCreator:
                                                      name="Youtube liked Songs",
                                                      description=description)
 
-        # Write a File with the Playlist id
-        file = open("PlaylistID.txt", "w")
-        file.write(response['id'])
+        spotifycredentials.playlist_id = response['id']
         return response['id']
 
     # Adds the liked songs to the playlist.
     def add_songs_to_playlist(self):
-        file = open("PlaylistID.txt", "r")
-
-        # Check if empty
-        if os.path.getsize(file) == 0:
+        if not spotifycredentials.playlist_id:
             self.create_playlist()
-        playlist = file.read()
+        playlist_id = spotifycredentials.playlist_id
+        print(playlist_id)
 
         # Add the songs to the playlist
-        pass
+        tracklist: list = []
+        for key in self.song_info.keys():
+            track: str = self.song_info[key]['spotify_uri']
+            track = track[14:]
+            tracklist.append(track)
+
+        self.spotify.playlist_add_items(playlist_id=playlist_id, items=tracklist)
