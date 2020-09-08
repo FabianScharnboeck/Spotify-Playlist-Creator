@@ -12,3 +12,4 @@ oauth_token = input("Spotify Oauth Token:")
 ```
 #### You need your Spotify Client ID, the Client Secret ID, the User ID and an Oauth Token: https://developer.spotify.com/documentation/general/guides/authorization-guide/
 #### Furthermore you need to have a Youtbe API Key and OAuth 2.0 Client ID which you can obtain from: https://console.developers.google.com/apis/credentials
+## Note that the client_secret.json file is empty. When downloading it from the credentials page you can copy paste the data into client_secret.json
