@@ -1,5 +1,5 @@
 # Spotify-Playlist-Creator
-## This is my first try of using the 'YouTube Data API v3' as well as the 'Spotify API'
+## This is my first try of using the 'YouTube Data API v3' and the 'Spotify API'
 ### Spotify API: https://developer.spotify.com/
 ### Youtube API: https://developers.google.com/youtube/v3
 
