@@ -1,9 +1,12 @@
+import bz2
+
 import spotipy
+import youtube_dl
+import json
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from spotipy.oauth2 import SpotifyOAuth
 import spotifycredentials
-import youtube_dl
 
 
 # Cuts a string from the start of a '(' symbol
@@ -22,16 +25,18 @@ class PlaylistCreator:
         self.SPOTIFY_CLIENT_SECRET = spotifycredentials.client_secret_spotify
         self.SPOTIFY_USER_ID = spotifycredentials.user_id
         self.REDIRECT_URI = spotifycredentials.redirect_uri
-        self.SPOTIFY_USERNAME = spotifycredentials.username
-        self.OAUTH_KEY_FILE = "client_secret_306315169899-d9fj3lvr1jnddrpbtel2nag14u2fa37n.apps.googleusercontent.com" \
-                              ".json "
+
+        # Insert your youtube oauth file here.
+        self.OAUTH_KEY_FILE = "client_secret.json"
+        playlistjson = open("playlist.json")
+        self.PLAYLIST = json.load(playlistjson)
         scope = 'playlist-modify-private'
 
         self.spotify = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=self.SPOTIFY_CLIENT_ID,
                                                                  client_secret=self.SPOTIFY_CLIENT_SECRET,
                                                                  scope=scope,
                                                                  redirect_uri=self.REDIRECT_URI,
-                                                                 username=self.SPOTIFY_USERNAME))
+                                                                 username=self.SPOTIFY_USER_ID))
         self.song_info = {}
         self.assign_song_infos()
         print(self.song_info)
@@ -60,32 +65,27 @@ class PlaylistCreator:
             info = youtube_dl.YoutubeDL({}).extract_info(url, download=False)
             song_name = info["track"]
             artist = info["artist"]
+
             if not song_name:
                 song_name = preprocess_song_name(info["title"])
-                self.song_info[song_name] = {
-                    "url": url,
-                    "song_name": song_name,
-                    "artist": artist,
-                    "spotify_uri": self.get_spotify_uri(song_name)
-                }
-            else:
-                self.song_info[song_name] = {
-                    "url": url,
-                    "song_name": song_name,
-                    "artist": artist,
-                    "spotify_uri": self.get_spotify_uri(song_name, artist)
-                }
+
+            self.song_info[song_name] = {
+                "url": url,
+                "song_name": song_name,
+                "artist": artist,
+                "spotify_uri": self.get_spotify_uri(song_name)
+            }
 
     # Returns the spotify URI of the searched song.
     def get_spotify_uri(self, song_name, artist=None):
         if artist:
             q = "track:{} artist:{}".format(song_name, artist)
-            result = self.spotify.search(q=q, type="track", offset=0, limit=20)
-            songs = result['tracks']['items']
         else:
             q = song_name
-            result = self.spotify.search(q=q, type="track", offset=0, limit=20)
-            songs = result['tracks']['items']
+
+        result = self.spotify.search(q=q, type="track", offset=0, limit=20)
+        songs = result['tracks']['items']
+
         if not songs:
             return []
         else:
@@ -97,15 +97,18 @@ class PlaylistCreator:
         response = self.spotify.user_playlist_create(user=self.SPOTIFY_USER_ID, public=False,
                                                      name="Youtube liked Songs",
                                                      description=description)
-
-        spotifycredentials.playlist_id = response['id']
+        pl: str = "playlist.json"
+        playlist = open(pl, "w")
+        playlist.write(json.dumps({"playlist_id": response['id']}))
+        playlist = open(pl, "r")
+        self.PLAYLIST = json.load(playlist)
         return response['id']
 
     # Adds the liked songs to the playlist.
     def add_songs_to_playlist(self):
-        if not spotifycredentials.playlist_id:
+        if not self.PLAYLIST['playlist_id']:
             self.create_playlist()
-        playlist_id = spotifycredentials.playlist_id
+        playlist_id = self.PLAYLIST['playlist_id']
         print(playlist_id)
 
         # Add the songs to the playlist
