@@ -2,6 +2,7 @@
 ## This is my first try of using the 'YouTube Data API v3' and the 'Spotify API'
 ### Spotify API: https://developer.spotify.com/
 ### Youtube API: https://developers.google.com/youtube/v3
+#### This project gets information about your liked voutube videos and tries to find fitting spotify tracks, create a playlist and adds the songs. It is only tested for an account that only likes youtube music.
 
 #### To correctly use this project you need several things:
 ``` python
